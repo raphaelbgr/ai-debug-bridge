@@ -768,6 +768,61 @@ ai-debug-bridge/
 
 ---
 
+## Phase 5: Bluetooth Remote Control
+
+**Goal:** Transform AI Debug Bridge from an in-app debugging library into an AI-controlled Bluetooth remote control. Allows an AI agent to navigate any device (Android TV, Fire TV, Apple TV) over Bluetooth HID, send DPAD/media keys, and type text via keyboard emulation.
+
+**Dependencies:** Phase 1 complete. No other phase dependencies.
+
+**Status:** Phase 5a (BT HID Device core) complete. Built 2026-03-26.
+
+### 5a. Bluetooth HID Device Core (COMPLETE)
+
+| Task | Complexity | Status | Notes |
+|------|-----------|--------|-------|
+| HID Report Descriptor (keyboard + consumer + gamepad) | High | Done | USB HID spec-compliant binary descriptors |
+| BluetoothHidRemote wrapper (API 28+) | High | Done | Connect, disconnect, sendDpadKey, sendMediaKey, sendText |
+| BluetoothDiscovery (Classic BT + name heuristics) | Medium | Done | TV/media device classification |
+| BluetoothEndpoint (6 HTTP routes) | Medium | Done | connect, disconnect, status, discover, paired, send |
+| BridgeRequest extensions (16 command types) | Low | Done | DPAD, media, text send types |
+| MCP tools (4 Bluetooth tools) | Low | Done | bluetooth_connect/send/discover/status |
+| BridgeServer integration + lifecycle | Medium | Done | Register/unregister on start/stop |
+| AndroidManifest permissions | Low | Done | BLUETOOTH_CONNECT, BLUETOOTH_SCAN |
+
+**Files created:** `bluetooth/HidReportDescriptor.kt`, `bluetooth/BluetoothHidRemote.kt`, `bluetooth/BluetoothDiscovery.kt`, `endpoints/BluetoothEndpoint.kt`
+
+### 5b. Virtual Input Device (Planned)
+
+| Task | Complexity | Dependencies | Notes |
+|------|-----------|-------------|-------|
+| Linux uinput wrapper for virtual remote | Medium | Root or uhid permission | System-wide input on rooted devices |
+| InputManager injection (system permission) | Medium | INJECT_EVENTS permission | Clean API, system-wide |
+
+### 5c. BT Keyboard Text Entry (Planned)
+
+| Task | Complexity | Dependencies | Notes |
+|------|-----------|-------------|-------|
+| Smart text entry with IME detection | Medium | 5a | Detect on-screen keyboard, bypass via BT |
+| Special character mapping (full Unicode) | Medium | 5a | Extended keyboard HID codes |
+| Password field secure entry | Low | 5a | BT keyboard input doesn't appear in logs |
+
+### 5d. Android Auto Rotary Encoder (Planned)
+
+| Task | Complexity | Dependencies | Notes |
+|------|-----------|-------------|-------|
+| CarInputManager integration | High | Android Auto SDK | Rotary dial emulation |
+| Steering wheel button mapping | Medium | 5a | Map HID buttons to Auto actions |
+
+### 5e. Cross-Device Discovery & Pairing (Planned)
+
+| Task | Complexity | Dependencies | Notes |
+|------|-----------|-------------|-------|
+| mDNS/NSD service discovery | Medium | None | Find AI Debug Bridge instances on LAN |
+| BT pairing flow automation | High | 5a | Pair without manual interaction |
+| Multi-device orchestration | High | 5a | Control multiple TVs simultaneously |
+
+---
+
 ## Timeline Estimate
 
 | Phase | Duration | Depends On | Parallelizable |
@@ -776,16 +831,18 @@ ai-debug-bridge/
 | Phase 2: Compose Deep | 3-4 weeks | Phase 1 | Yes (with Phase 3) |
 | Phase 3: AI Extensions | 4-6 weeks | Phase 1 | Yes (with Phase 2) |
 | Phase 4: Cross-Platform | 6-8 weeks | Phase 1 + Phase 3 (recommended) | Partially |
+| Phase 5: Bluetooth Remote | 4-6 weeks | Phase 1 (5a done) | Yes (with Phase 2-4) |
 
 ```
-Week:  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20
+Week:  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22
        |------ Phase 1 ------|
                               |--- Phase 2 ---|
                               |------ Phase 3 ------|
+                              |-- Phase 5a -|-- 5b-5e ---|
                                                      |-------- Phase 4 --------|
 ```
 
-Phases 2 and 3 can proceed in parallel after Phase 1 is complete. Phase 4 benefits from Phase 3's plugin system for cross-platform plugin development, but the core KMP extraction (4.1) can start after Phase 1.
+Phases 2, 3, and 5 can proceed in parallel after Phase 1 is complete. Phase 4 benefits from Phase 3's plugin system for cross-platform plugin development, but the core KMP extraction (4.1) can start after Phase 1.
 
 ---
 
