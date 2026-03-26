@@ -115,6 +115,87 @@ class McpToolRegistry {
         ))
 
         registerTool(McpTool(
+            name = "bluetooth_connect",
+            description = "Connect to a Bluetooth device as HID remote control (DPAD, media keys, keyboard)",
+            inputSchema = buildJsonObject {
+                put("type", "object")
+                put("properties", buildJsonObject {
+                    put("macAddress", buildJsonObject {
+                        put("type", "string")
+                        put("description", "MAC address of the target device (e.g., AA:BB:CC:DD:EE:FF)")
+                    })
+                })
+                put("required", kotlinx.serialization.json.buildJsonArray {
+                    add(kotlinx.serialization.json.JsonPrimitive("macAddress"))
+                })
+            },
+            handler = { _ ->
+                buildJsonObject { put("status", "ok") }
+            }
+        ))
+
+        registerTool(McpTool(
+            name = "bluetooth_send",
+            description = "Send a command via Bluetooth HID: DPAD navigation, media keys, or text input",
+            inputSchema = buildJsonObject {
+                put("type", "object")
+                put("properties", buildJsonObject {
+                    put("type", buildJsonObject {
+                        put("type", "string")
+                        put("description", "Command type")
+                        put("enum", kotlinx.serialization.json.buildJsonArray {
+                            for (t in listOf("DPAD_UP", "DPAD_DOWN", "DPAD_LEFT", "DPAD_RIGHT", "DPAD_CENTER",
+                                "PLAY_PAUSE", "VOLUME_UP", "VOLUME_DOWN", "MUTE", "BACK", "HOME",
+                                "MENU", "STOP", "NEXT_TRACK", "PREV_TRACK", "TEXT")) {
+                                add(kotlinx.serialization.json.JsonPrimitive(t))
+                            }
+                        })
+                    })
+                    put("text", buildJsonObject {
+                        put("type", "string")
+                        put("description", "Text to type (only for TEXT type)")
+                    })
+                })
+                put("required", kotlinx.serialization.json.buildJsonArray {
+                    add(kotlinx.serialization.json.JsonPrimitive("type"))
+                })
+            },
+            handler = { _ ->
+                buildJsonObject { put("status", "ok") }
+            }
+        ))
+
+        registerTool(McpTool(
+            name = "bluetooth_discover",
+            description = "Discover nearby Bluetooth devices (TVs, set-top boxes, media players)",
+            inputSchema = buildJsonObject {
+                put("type", "object")
+                put("properties", buildJsonObject {
+                    put("tvOnly", buildJsonObject {
+                        put("type", "boolean")
+                        put("default", false)
+                        put("description", "Only return TV/media device types")
+                    })
+                })
+            },
+            handler = { _ ->
+                buildJsonObject { put("status", "ok") }
+            }
+        ))
+
+        registerTool(McpTool(
+            name = "bluetooth_status",
+            description = "Get Bluetooth HID connection status and connected device info",
+            inputSchema = buildJsonObject {
+                put("type", "object")
+                put("properties", buildJsonObject {})
+            },
+            handler = { _ ->
+                buildJsonObject { put("status", "ok") }
+            }
+        ))
+
+        registerTool(McpTool(
             name = "screenshot",
             description = "Capture a screenshot of the current screen as base64 PNG",
             inputSchema = buildJsonObject {

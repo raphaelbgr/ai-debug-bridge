@@ -1,7 +1,10 @@
 package com.aidebugbridge.server
 
+import android.os.Build
 import android.util.Log
 import com.aidebugbridge.auth.HmacAuth
+import com.aidebugbridge.bluetooth.BluetoothDiscovery
+import com.aidebugbridge.bluetooth.BluetoothHidRemote
 import com.aidebugbridge.discovery.DiscoveryEngine
 import com.aidebugbridge.endpoints.*
 import com.aidebugbridge.events.EventBus
@@ -41,6 +44,16 @@ class BridgeServer(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var engine: NettyApplicationEngine? = null
 
+    // Bluetooth HID (API 28+ only, null on older devices)
+    private val bluetoothHidRemote: BluetoothHidRemote? = if (BluetoothHidRemote.isSupported()) {
+        @Suppress("NewApi")
+        BluetoothHidRemote(discoveryEngine.getContext())
+    } else null
+
+    private val bluetoothDiscovery: BluetoothDiscovery? = if (BluetoothHidRemote.isSupported()) {
+        BluetoothDiscovery(discoveryEngine.getContext())
+    } else null
+
     private val json = Json {
         prettyPrint = true
         ignoreUnknownKeys = true
@@ -48,6 +61,11 @@ class BridgeServer(
     }
 
     fun start() {
+        // Register Bluetooth HID device if supported
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            bluetoothHidRemote?.register()
+        }
+
         scope.launch {
             try {
                 engine = embeddedServer(Netty, port = port) {
@@ -70,6 +88,10 @@ class BridgeServer(
     fun stop() {
         engine?.stop(gracePeriodMillis = 1000, timeoutMillis = 3000)
         engine = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            bluetoothHidRemote?.unregister()
+            bluetoothDiscovery?.stopDiscovery()
+        }
         Log.i(TAG, "Bridge server stopped")
     }
 
@@ -120,6 +142,7 @@ class BridgeServer(
         val simulateEndpoint = SimulateEndpoint(discoveryEngine)
         val screenshotEndpoint = ScreenshotEndpoint(discoveryEngine)
         val webSocketHandler = WebSocketHandler(eventBus)
+        val bluetoothEndpoint = BluetoothEndpoint(bluetoothHidRemote, bluetoothDiscovery)
         val mcpToolRegistry = McpToolRegistry()
         val mcpProtocol = McpProtocol(mcpToolRegistry)
         val mcpTransport = McpTransport(mcpProtocol)
@@ -134,7 +157,14 @@ class BridgeServer(
                             "/map", "/current", "/navigate", "/action",
                             "/input", "/state", "/events", "/focus",
                             "/overlays", "/memory", "/simulate", "/screenshot",
-                            "/mcp"
+                            "/mcp",
+                            "/bluetooth/connect", "/bluetooth/disconnect",
+                            "/bluetooth/status", "/bluetooth/discover",
+                            "/bluetooth/send", "/bluetooth/paired"
+                        ),
+                        "bluetooth" to mapOf(
+                            "supported" to BluetoothHidRemote.isSupported(),
+                            "apiLevel" to Build.VERSION.SDK_INT,
                         )
                     )
                 )
@@ -153,6 +183,14 @@ class BridgeServer(
             get("/memory") { memoryEndpoint.handle(call) }
             post("/simulate") { simulateEndpoint.handle(call) }
             get("/screenshot") { screenshotEndpoint.handle(call) }
+
+            // Bluetooth HID remote control
+            post("/bluetooth/connect") { bluetoothEndpoint.handleConnect(call) }
+            post("/bluetooth/disconnect") { bluetoothEndpoint.handleDisconnect(call) }
+            get("/bluetooth/status") { bluetoothEndpoint.handleStatus(call) }
+            get("/bluetooth/discover") { bluetoothEndpoint.handleDiscover(call) }
+            get("/bluetooth/paired") { bluetoothEndpoint.handlePaired(call) }
+            post("/bluetooth/send") { bluetoothEndpoint.handleSend(call) }
 
             // MCP JSON-RPC 2.0 endpoint
             post("/mcp") {
