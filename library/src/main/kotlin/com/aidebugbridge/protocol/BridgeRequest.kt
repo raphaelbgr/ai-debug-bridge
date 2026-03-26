@@ -89,4 +89,42 @@ object BridgeRequest {
         DPAD_CENTER,
         KEY_EVENT,
     }
+
+    // ── Bluetooth HID Remote Control ──
+
+    @Serializable
+    data class BluetoothConnect(
+        val macAddress: String,
+    )
+
+    @Serializable
+    data class BluetoothSend(
+        val type: BluetoothSendType,
+        val text: String? = null,
+    )
+
+    @Serializable
+    enum class BluetoothSendType {
+        // DPAD navigation
+        DPAD_UP,
+        DPAD_DOWN,
+        DPAD_LEFT,
+        DPAD_RIGHT,
+        DPAD_CENTER,
+
+        // Media keys
+        PLAY_PAUSE,
+        VOLUME_UP,
+        VOLUME_DOWN,
+        MUTE,
+        BACK,
+        HOME,
+        MENU,
+        STOP,
+        NEXT_TRACK,
+        PREV_TRACK,
+
+        // Text input
+        TEXT,
+    }
 }

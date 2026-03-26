@@ -71,4 +71,9 @@ class DiscoveryEngine(
      * Get the root view of the current activity.
      */
     fun getRootView(): View? = getCurrentActivity()?.window?.decorView
+
+    /**
+     * Get the application context (needed for Bluetooth, system services, etc.)
+     */
+    fun getContext(): android.content.Context = application.applicationContext
 }
