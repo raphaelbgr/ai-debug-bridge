@@ -2,6 +2,27 @@
 
 A Kotlin Android library (AAR) that embeds an HTTP/WebSocket server inside Android apps, enabling AI agents to inspect, navigate, and interact with running applications in real-time.
 
+## Why This Exists
+
+The dominant paradigm for AI agents interacting with Android apps is the screenshot pipeline: capture the screen, send it to a vision model, receive a structured interpretation, decide on an action, execute it via ADB, then capture again to verify. Each cycle takes **1.5–7 seconds**. A task requiring 10 UI interactions takes 15–70 seconds — and that's on a single device.
+
+ADB commands compound the problem. Every `input tap`, `dumpsys activity`, or `uiautomator dump` crosses the USB/TCP boundary, routed through the ADB daemon, executed in a shell process, and returned. That is 50–200ms minimum per command, 1–3 seconds for a UI dump — and the dump is already stale by the time it arrives.
+
+AI Debug Bridge replaces the entire external-tool stack with an **in-process HTTP/WebSocket server**. It runs inside your debug APK, reads live `View` objects directly, and responds in under 1ms. No screenshots. No ADB round-trips. No stale snapshots. No compile-and-redeploy cycles. The AI agent gets typed, structured, real-time data about the exact state the user sees.
+
+## Pain Points Solved
+
+- **Screenshot latency (1.5–7s/cycle → <1ms)** — `/current` returns the full view tree as typed JSON without vision inference or screen capture
+- **ADB round-trip overhead (50–200ms/command → <5ms)** — all operations execute in-process via direct `View` method calls
+- **Stale accessibility dumps** — data is read from live objects on the main thread at the moment of the request; no Binder IPC serialization lag
+- **Ambiguous element resolution** — views are addressed by `System.identityHashCode`, not fragile text/resource-ID patterns that collide in RecyclerViews
+- **No runtime navigation introspection** — exposes the Navigation Component back stack, fragment manager state, and deep-link graph over `/map`
+- **DPAD/TV focus blindness** — `/focus` returns the complete focus graph with DPAD path calculations, critical for Fire TV and Android TV agents
+- **No live event stream** — WebSocket `/ws` pushes lifecycle, interaction, and state-change events the instant they occur; no polling required
+- **Compile-time testing lock-in** — no test code needs to be compiled into the app; agents query and interact entirely over HTTP
+- **SharedPreferences/ViewModel opacity** — `/state` exposes and mutates app state without ADB shell commands or reflection hacks
+- **Memory profiling gaps** — `/memory` returns Java heap, native heap, and PSS breakdown from within the process for accurate accounting
+
 ## Features
 
 - **Full App Map** — Activity stack, fragment hierarchy, navigation graphs, view trees, Compose semantics
